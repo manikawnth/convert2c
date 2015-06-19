@@ -8,6 +8,18 @@ var lines = S(data).lines();
 var linecount = 0;
 
 // ---------------------------------------------------------------------------------------------------- //
+// symbol processing variables - Global data                                                             //
+// ---------------------------------------------------------------------------------------------------- //
+var symbol_xref_text = "Ordinary Symbol and Literal Cross Reference";
+var symbol_section_line = -1;
+var symbol_text = "-Symbol";
+var symbol_line = -1;
+var symbol_done = false;
+
+var symbol_array = [];
+
+
+// ---------------------------------------------------------------------------------------------------- //
 // macro processing variables - Global data                                                             //
 // ---------------------------------------------------------------------------------------------------- //
 var macro_xref_text = "Macro and Copy Code Cross Reference";
@@ -44,6 +56,184 @@ for(i=0;i<lines.length;i++){
 	linecount ++;
 
 
+	if(!symbol_done){
+
+		//Find the label "Ordinary Symbol and Literal Cross Reference" and set the symbol_section_line number 
+		if(line.search(symbol_xref_text) >= 0){
+			symbol_section_line = linecount;
+		}
+
+		// Find the label "-Symbol", it should be at pos 0 and it should be next line of label "Ordinary Symbol and Literal Cross Reference" 
+		if( (line.search(symbol_text) >= 0) && 
+			(line.indexOf(symbol_text) == 0) && 
+			(linecount-1 == symbol_section_line) ){
+			symbol_line = linecount;
+		}
+
+		// If -Symbol is already found and not on current line then process 
+		if ( (symbol_line >= 0) && (symbol_line != linecount) ){
+			if (( line.search(macro_xref_text) >= 0 )){
+				symbol_done = true;
+			}
+			else{
+				//Variables needed for every iteration
+				var symbol_doc = {};
+				var ref_array = [];
+				
+				// Format Symbol name
+				//----+----1----+----2----+----3----+----4----+----5----+----6----+----7--
+				//-Symbol   Length   Value     Id    R Type Asm  Program   Defn References
+				//0$LK0004       1 000001B2 00000002     U                 3472           
+				// $LK0004A      1 000001C2 00000002     U                 3478  3496B    
+				
+				if (line.substr(1,1) != ' '){  //If the line has Symbol name
+					// If 8th char is not space, then there is a continuation
+					// Only "name" is pushed into symbol document array
+					str = S(line).trimLeft().s
+					pos = str.search(' ')
+					if(pos == -1){
+						pos = str.length
+						symbol_doc.name = line.substr(1,pos);
+						symbol_array.push(symbol_doc);
+						continue;		//Continue for next line
+					}
+					else{
+						// The line has name, stmt till ref
+						symbol_doc.name = line.substr(1,pos);
+						symbol_doc.stmt = S(S(line.substr(55,6)).trimLeft().s).toInt();
+						symbol_doc.len = S(S(line.substr(10,6)).trimLeft().s).toInt();
+						symbol_doc.typeattr = line.substr(39,1);
+						symbol_doc.datatype = line.substr(42,1);
+
+						str_array = S(S(line.substr(62,line.length-62)).trimLeft().s).collapseWhitespace().s.split(" ");
+		
+						for(j=0;j<str_array.length;j++){
+							str = str_array[j];
+							var ref_doc = {};
+
+							switch(str[str.length - 1]){
+								case 'B':
+									ref_doc.reftype = 'B';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'D':
+									ref_doc.reftype = 'D';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'M':
+									ref_doc.reftype = 'M';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'U':
+									ref_doc.reftype = 'U';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'X':
+									ref_doc.reftype = 'X';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								default:
+									ref_doc.reftype = 'X';
+									ref_doc.stmt = str.substr(0,str.length);
+									break;
+							}
+							ref_array.push(ref_doc);
+							symbol_doc.ref = ref_array;
+
+						}
+						symbol_array.push(symbol_doc);
+					}
+				}
+				else{
+					//This is continuation of previous line
+					//Point macr_doc to last element of the macro_array for continuation lines
+					symbol_doc = symbol_array[symbol_array.length - 1];
+					if(line.substr(15,1) == ' '){
+						//Previouls line has only name, type and some refs
+						str_array = S(S(line.substr(62,line.length-62)).trimLeft().s).collapseWhitespace().s.split(" ");
+						for(j=0;j<str_array.length;j++){
+							str = str_array[j];
+							var ref_doc = {};
+
+							switch(str[str.length - 1]){
+								case 'B':
+									ref_doc.reftype = 'B';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'D':
+									ref_doc.reftype = 'D';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'M':
+									ref_doc.reftype = 'M';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'U':
+									ref_doc.reftype = 'U';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'X':
+									ref_doc.reftype = 'X';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								default:
+									ref_doc.reftype = ' ';
+									ref_doc.stmt = str.substr(0,str.length);
+									break;
+							}
+							symbol_doc.ref.push(ref_doc);
+
+						}
+					}
+					else{
+						//Previous line has only name and nothing else
+						symbol_doc.name = line.substr(1,pos);
+						symbol_doc.stmt = S(S(line.substr(55,6)).trimLeft().s).toInt();
+						symbol_doc.len = S(S(line.substr(10,6)).trimLeft().s).toInt();
+						symbol_doc.typeattr = line.substr(39,1);
+						symbol_doc.datatype = line.substr(42,1);
+
+						str_array = S(S(line.substr(62,line.length-62)).trimLeft().s).collapseWhitespace().s.split(" ");
+		
+						for(j=0;j<str_array.length;j++){
+							str = str_array[j];
+							var ref_doc = {};
+
+							switch(str[str.length - 1]){
+								case 'B':
+									ref_doc.reftype = 'B';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'D':
+									ref_doc.reftype = 'D';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'M':
+									ref_doc.reftype = 'M';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'U':
+									ref_doc.reftype = 'U';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								case 'X':
+									ref_doc.reftype = 'X';
+									ref_doc.stmt = str.substr(0,str.length -1);
+									break;
+								default:
+									ref_doc.reftype = ' ';
+									ref_doc.stmt = str.substr(0,str.length);
+									break;
+							}
+							ref_array.push(ref_doc);
+						}
+						symbol_doc.ref = ref_array;
+					}
+				}
+			}
+		}
+	}
+ 
 
 	if(!macro_done){
 		//Find the label "Macro and Copy Code Cross Reference" and set the macro_section_line number 
@@ -71,15 +261,21 @@ for(i=0;i<lines.length;i++){
 				//----+----1----+----2----+----3----+----4----+----5
 				//-Macro     Con  Called By        Defn  References
 				// LTENT     L18  PRIMARY INPUT       -  9991
+				
+				//If this is a long name line
+				if((S(line).trimLeft().s).search(' ') == -1){
+					debugger;
+					macro_doc.name = line.substr(1,line.length - 1);
+					macro_array.push(macro_doc);
+				}
+
 				if(line.search("PRIMARY INPUT") == 16){
 
 					//If this is a 1st line of Macro and not continuation
 					if( line.substr(1,1) !=' '){ 
-							
 							//Format macro_doc "name"
-							str = S(line).trimLeft().s
-							pos = str.search(' ')
-							if(pos == -1){pos = str.length};
+							str = S(line).trimLeft().s;
+							pos = str.search(' ');
 							macro_doc.name = line.substr(1,pos);	
 							
 							//Format macro_doc "stmt"
@@ -109,11 +305,10 @@ for(i=0;i<lines.length;i++){
 							macro_array.push(macro_doc);
 					}
 					else{ 
-						debugger;
-						if(line.substr(36,1) == ' '){
-							//Point macr_doc to last element of the macro_array for continuation lines
-							macro_doc = macro_array[macro_array.length - 1];
+						//Point macr_doc to last element of the macro_array for continuation lines
+						macro_doc = macro_array[macro_array.length - 1];
 
+						if(line.substr(36,1) == ' '){
 							//Format macro_doc "ref" for continuation lines
 							for(j=0;j<str_array.length;j++){
 								
@@ -125,8 +320,37 @@ for(i=0;i<lines.length;i++){
 								macro_doc.isMacro = true;
 
 							}
-						}; 	
-						//continue; //Logic to be added for big Macro names
+						}
+						
+						else{
+
+							//Format macro_doc "stmt"
+							debugger;
+							str = S(line.substr(31,6)).trimLeft().s;
+							if(str == '-'){macro_doc.stmt = -1;}
+							else{macro_doc.stmt = S(str).toInt()}
+
+							//Format macro_doc "ref" & isMacro"
+							str_array = line.substr(39,line.length-39).split(", ");
+							
+
+							for(j=0;j<str_array.length;j++){
+								str = str_array[j];
+								
+								if(S(str).endsWith('C')){
+									num = S(S(str).between('','C').s).toInt()
+									ref_array.push(num);
+									macro_doc.isMacro = false;
+								}
+								else{
+									num = S(S(str).s).toInt();
+									ref_array.push(num);
+									macro_doc.isMacro = true;
+								}
+							}
+							macro_doc.ref = ref_array;
+						}	
+						
 					}
 				}
 				
@@ -140,14 +364,14 @@ for(i=0;i<lines.length;i++){
 			dsect_section_line = linecount;
 		}
 
-		/* Find the label "-Dsect", it should be at pos 0 and it should be next line of label "Dsect Cross Reference" */
+		// Find the label "-Dsect", it should be at pos 0 and it should be next line of label "Dsect Cross Reference" 
 		if( (line.search(dsect_text) >= 0) && 
 			(line.indexOf(dsect_text) == 0) && 
 			(linecount-1 == dsect_section_line) ){
 			dsect_line = linecount;
 		}
 
-		/* If -Dsect is already found and not on current line then process */
+		// If -Dsect is already found and not on current line then process 
 		if ( (dsect_line >= 0) && (dsect_line != linecount) ){
 			if (( line.search(reg_xref_text) >= 0 )){
 				dsect_done = true;
@@ -162,7 +386,14 @@ for(i=0;i<lines.length;i++){
 			}
 		}
 	}
+
 }
 
-console.log(macro_array);
-console.log(dsect_array);
+/*
+for(k=0;k<35;k++){
+	console.log(JSON.stringify(symbol_array[k],null,4));
+}
+*/
+
+//console.log(symbol_array);
+//console.log(dsect_array);
