@@ -7,6 +7,26 @@ var lines = S(data).lines();
 
 var linecount = 0;
 
+
+// ---------------------------------------------------------------------------------------------------- //
+// source processing variables - Global data                                                            //
+// ---------------------------------------------------------------------------------------------------- //
+var source_xref_text = "Source Statement";
+var source_section_line = -1;
+//var source_text = "-Symbol";
+var source_line = -1;
+var source_done = false;
+
+var source_array = [];
+
+
+// ---------------------------------------------------------------------------------------------------- //
+// relocation  processing variables - Global data                                                       //
+// ---------------------------------------------------------------------------------------------------- //
+var reloc_xref_text = "Relocation Dictionary";
+
+
+
 // ---------------------------------------------------------------------------------------------------- //
 // symbol processing variables - Global data                                                             //
 // ---------------------------------------------------------------------------------------------------- //
@@ -54,6 +74,32 @@ var pos;
 for(i=0;i<lines.length;i++){
 	line = lines[i];
 	linecount ++;
+
+	if(!source_done){
+	
+		//----+----1----+----2----+----3----+----4----+----5----+----6
+		//-  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement 
+		//0                                      1 *******************
+	    //	                                  	 2 ********PRECOMP    
+
+		//Find the label "Source Statement" and set the source_section_line number 
+		if(line.search(source_xref_text) >= 0){
+			source_section_line = linecount;
+		}
+
+		if(source_section_line > 0 && source_section_line!= linecount){
+			if(line.search(reloc_xref_text) >= 0 ){
+				source_done = true;
+			}
+			else{
+				//Line is an open-source statement and not a comment.
+				if(line.substr(40,1) == ' ' && line.substr(41,1) == '*'){
+					
+				}
+			}
+		}
+
+	}
 
 
 	if(!symbol_done){
@@ -133,7 +179,7 @@ for(i=0;i<lines.length;i++){
 									ref_doc.stmt = str.substr(0,str.length -1);
 									break;
 								default:
-									ref_doc.reftype = 'X';
+									ref_doc.reftype = ' ';
 									ref_doc.stmt = str.substr(0,str.length);
 									break;
 							}
@@ -388,6 +434,8 @@ for(i=0;i<lines.length;i++){
 	}
 
 }
+
+
 
 /*
 for(k=0;k<35;k++){
