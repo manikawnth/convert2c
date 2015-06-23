@@ -70,6 +70,7 @@ var reg_xref_text = "General Purpose Register Cross Reference";
 var str;
 var num;
 var pos;
+var nolabel;
 
 for(i=0;i<lines.length;i++){
 	line = lines[i];
@@ -93,15 +94,21 @@ for(i=0;i<lines.length;i++){
 			}
 			else{
 				//Line is an open-source statement and not a comment.
-				if(line.substr(40,1) == ' ' && line.substr(41,1) == '*'){
-					
+				if(line.substr(40,1) == ' ' && line.substr(41,1) != '*' && line.substr(41,2) != '.*'){
+					var str = line.substr(41,line.length - 41);
+					var source_doc = {};
+					nolabel = false;
+					if(str.substr(1,1) == ' '){ 
+						nolabel = true;
+					}
+					console.log((S(str).collapseWhitespace().s).split(" "));
 				}
 			}
 		}
 
 	}
 
-
+/*
 	if(!symbol_done){
 
 		//Find the label "Ordinary Symbol and Literal Cross Reference" and set the symbol_section_line number 
@@ -432,6 +439,7 @@ for(i=0;i<lines.length;i++){
 			}
 		}
 	}
+*/
 
 }
 
