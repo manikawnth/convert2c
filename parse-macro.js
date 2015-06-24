@@ -98,17 +98,34 @@ for(i=0;i<lines.length;i++){
 					var str = line.substr(41,line.length - 41);
 					var source_doc = {};
 					nolabel = false;
+					
+					source_doc.disp = line.substr(1,6);
+					source_doc.machinecode = S(line.substr(8,9).trimRight()).s;
+					source_doc.stmt = S(S(line.substr(35,5)).trimLeft().s).toInt();
+					
 					if(str.substr(1,1) == ' '){ 
 						nolabel = true;
 					}
-					console.log((S(str).collapseWhitespace().s).split(" "));
+
+					str_array = S(str).collapseWhitespace().s.split(" ");
+					if(nolabel){
+						source_doc.label = '';
+						source_doc.opcode = str_array[0];
+						source_doc.operands = str_array[1];
+					}
+					else{
+						source_doc.label = str_array[0];
+						source_doc.opcode = str_array[1];
+						source_doc.operands = str_array[2];
+					}
+					source_array.push(source_doc);
 				}
 			}
 		}
 
 	}
 
-/*
+
 	if(!symbol_done){
 
 		//Find the label "Ordinary Symbol and Literal Cross Reference" and set the symbol_section_line number 
@@ -439,15 +456,15 @@ for(i=0;i<lines.length;i++){
 			}
 		}
 	}
-*/
+
 
 }
 
 
 
 /*
-for(k=0;k<35;k++){
-	console.log(JSON.stringify(symbol_array[k],null,4));
+for(k=3000;k<3000 + 35;k++){
+	console.log(JSON.stringify(source_array[k],null,4));
 }
 */
 
