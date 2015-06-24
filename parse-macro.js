@@ -468,5 +468,5 @@ for(k=3000;k<3000 + 35;k++){
 }
 */
 
-//console.log(symbol_array);
+console.log(source_array);
 //console.log(dsect_array);
